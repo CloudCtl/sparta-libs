@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 	"os"
 	"path/filepath"
@@ -100,4 +101,30 @@ func NewSpartaConfigFromNameAndLocations(fileName string, searchPaths ...string)
 	}
 
 	return &config, nil
+}
+
+func WriteConfig(config SpartaConfig, fullPath string) error {
+	// create a new viper instance
+	viperInstance := viper.New()
+
+	// create map from mapstructure and struct
+	encodedMap := make(map[string]interface{})
+	err := mapstructure.Decode(config, &encodedMap)
+	if err != nil {
+		return err
+	}
+
+	// load values into viper instance from map
+	err = viperInstance.MergeConfigMap(encodedMap)
+	if err != nil {
+		return err
+	}
+
+	// write configuration to file
+	err = viperInstance.WriteConfigAs(fullPath)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

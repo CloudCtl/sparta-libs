@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/stretchr/testify/assert"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -15,7 +16,6 @@ func loadTestData(name string, t *testing.T) SpartaConfig {
 
 	// join with testdata directory
 	testdata := filepath.Join(parent, "testdata")
-	t.Logf("Adding testdata: %s", testdata)
 
 	spartaConfig, err := NewSpartaConfigFromNameAndLocations(name, testdata)
 	if err != nil {
@@ -30,9 +30,7 @@ func loadTestData(name string, t *testing.T) SpartaConfig {
 	return *spartaConfig
 }
 
-func TestSampleYaml(t *testing.T) {
-	config := loadTestData("sparta.yml", t)
-
+func assertSampleData(config SpartaConfig, t *testing.T) {
 	// create assertion
 	a := assert.New(t)
 
@@ -93,5 +91,35 @@ func TestSampleYaml(t *testing.T) {
 	a.Equal("github.com", collectorInfra.Service)
 	a.Equal("codesparta", collectorInfra.Organization)
 	a.Equal("master", collectorInfra.Branch)
+}
 
+func TestReadSampleYaml(t *testing.T) {
+	config := loadTestData("sparta.yml", t)
+	assertSampleData(config, t)
+}
+
+func TestWriteSampleYaml(t *testing.T) {
+	// create assertion
+	a := assert.New(t)
+
+	// load config
+	config := loadTestData("sparta.yml", t)
+
+	// create and defer removal of tmp dir
+	tmpDir := os.TempDir()
+	defer os.RemoveAll(tmpDir)
+
+	fileName := "test-output.yml"
+	tmpFile := filepath.Join(tmpDir, fileName)
+
+	err := WriteConfig(config, tmpFile)
+	a.Nil(err)
+
+	// read config
+	writtenConfig, err := NewSpartaConfigFromNameAndLocations(fileName, tmpDir)
+	a.Nil(err)
+	a.NotNil(writtenConfig)
+
+	// assert written test data is the same
+	assertSampleData(*writtenConfig, t)
 }
