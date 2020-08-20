@@ -63,11 +63,11 @@ type Koffer struct {
 
 // SpartaConfig is the holder for all of the parts of the configuration
 type SpartaConfig struct {
-	OpenShift
-	Cluster
-	Cloud
-	Subnets
-	ProviderAuth		`mapstructure:"provider-auth"`
-	RedSord
-	Koffer
+	OpenShift		OpenShift
+	Cluster			Cluster
+	Cloud			Cloud
+	Subnets			Subnets
+	ProviderAuth	ProviderAuth `mapstructure:"provider-auth"`
+	RedSord			RedSord
+	Koffer			Koffer
 }

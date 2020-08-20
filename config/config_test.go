@@ -17,7 +17,7 @@ func loadTestData(name string, t *testing.T) SpartaConfig {
 	// join with testdata directory
 	testdata := filepath.Join(parent, "testdata")
 
-	spartaConfig, err := NewSpartaConfigFromNameAndLocations(name, testdata)
+	spartaConfig, err := NewSpartaConfig(name, testdata)
 	if err != nil {
 		t.Errorf("Error loading configuration: %s", err)
 		t.FailNow()
@@ -40,6 +40,7 @@ func assertSampleData(config SpartaConfig, t *testing.T) {
 
 	// check cluster object
 	cluster := config.Cluster
+	a.NotNil(cluster)
 	a.Equal(cluster.Target, "govcloud")
 	a.Equal(cluster.VpcName, "iamgroot")
 	a.Equal(cluster.ClusterName, "i")
@@ -49,6 +50,7 @@ func assertSampleData(config SpartaConfig, t *testing.T) {
 
 	// check cloud object
 	cloud := config.Cloud
+	a.NotNil(cloud)
 	a.Equal(cloud.Provider, "aws")
 	a.Equal(cloud.Region, "us-gov-west-1")
 	a.Equal(cloud.VpcId, "vpc-0aef6256b40f30778")
@@ -56,6 +58,7 @@ func assertSampleData(config SpartaConfig, t *testing.T) {
 
 	// check subnets
 	subnets := config.Subnets
+	a.NotNil(subnets)
 	a.Equal(1, len(subnets))
 	a.Contains(subnets, "private")
 	private := subnets["private"]
@@ -66,20 +69,24 @@ func assertSampleData(config SpartaConfig, t *testing.T) {
 
 	// check provider-auth
 	providerAuth := config.ProviderAuth
+	a.NotNil(providerAuth)
 	a.True(providerAuth.Keys)
 	a.Equal("XXXXXXXXXXXXXXXXXXXX", providerAuth.Secret)
 	a.Equal("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", providerAuth.Key)
 
 	// check redsord
 	redSord := config.RedSord
+	a.NotNil(redSord)
 	a.False(redSord.Enabled)
 
 	// check koffer
 	koffer := config.Koffer
+	a.NotNil(koffer)
 	a.True(koffer.Silent)
 
 	// check koffer plugins
 	plugins := koffer.Plugins
+	a.NotNil(plugins)
 	a.Equal(3, len(plugins))
 	a.Contains(plugins, "collector-infra")
 	a.Contains(plugins, "collector-operators")
@@ -116,7 +123,7 @@ func TestWriteSampleYaml(t *testing.T) {
 	a.Nil(err)
 
 	// read config
-	writtenConfig, err := NewSpartaConfigFromNameAndLocations(fileName, tmpDir)
+	writtenConfig, err := NewSpartaConfig(fileName, tmpDir)
 	a.Nil(err)
 	a.NotNil(writtenConfig)
 

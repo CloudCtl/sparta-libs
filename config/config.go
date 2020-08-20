@@ -3,26 +3,12 @@ package config
 import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
-	"os"
 	"path/filepath"
 	"strings"
 )
 
-// get home dir
-var workingDir, _ = os.Getwd()
-var homeDir, _ = os.UserHomeDir()
-var runningDir, _ = os.Executable()
-
-// build paths from where we are
-var defaultPaths = []string{
-	workingDir,
-	runningDir,
-	homeDir,
-	"",
-}
-
 // the default file name of the configuration file
-var defaultFileName = "sparta.yml"
+const DefaultConfigName = "sparta.yml"
 
 // defaultConfig creates a default configuration where any values that
 //               need to default to "non-empty" values (like booleans)
@@ -45,26 +31,9 @@ func defaultConfig() SpartaConfig {
 	}
 }
 
-// NewSpartaConfig creates a configuration from the a file named "sparta.yml" found in
-//                 the current working directory, the user's home directory, or the directory
-//                 where the current executable is.
-func NewSpartaConfig() (*SpartaConfig, error) {
-	return NewSpartaConfigFromName(defaultFileName)
-}
-
-// NewSpartaConfigFromName creates a configuration from the a file with the given name found in
-//                 the current working directory, the user's home directory, or the directory
-//                 where the current executable is.
-func NewSpartaConfigFromName(fileName string) (*SpartaConfig, error) {
-	return NewSpartaConfigFromNameAndLocations(fileName, defaultPaths...)
-}
-
-// NewSpartaConfigFromNameAndLocations creates a configuration from the given file name and searches
-//                                     the list of locations for that file.
-func NewSpartaConfigFromNameAndLocations(fileName string, searchPaths ...string) (*SpartaConfig, error) {
-	// create a new viper instance
-	viperInstance := viper.New()
-
+// ViperSpartaConfig takes a viper instance, configures it for Sparta configuration using the given paths and search
+//                   location and loads the values into the viper instance as well as returning the configuration
+func ViperSpartaConfig(viperInstance *viper.Viper, fileName string, searchPaths ...string) (*SpartaConfig, error) {
 	// break config name
 	name := filepath.Base(fileName)
 	ext := filepath.Ext(fileName)
@@ -103,13 +72,23 @@ func NewSpartaConfigFromNameAndLocations(fileName string, searchPaths ...string)
 	return &config, nil
 }
 
+// NewSpartaConfig creates a configuration from the given file name and searches
+//                 the list of locations for that file.
+func NewSpartaConfig(fileName string, searchPaths ...string) (*SpartaConfig, error) {
+	// create a new viper instance
+	viperInstance := viper.New()
+
+	// return configuration
+	return ViperSpartaConfig(viperInstance, fileName, searchPaths...)
+}
+
 func WriteConfig(config SpartaConfig, fullPath string) error {
 	// create a new viper instance
 	viperInstance := viper.New()
 
 	// create map from mapstructure and struct
 	encodedMap := make(map[string]interface{})
-	err := mapstructure.Decode(config, &encodedMap)
+	err := mapstructure.Decode(&config, &encodedMap)
 	if err != nil {
 		return err
 	}
