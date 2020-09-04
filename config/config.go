@@ -1,14 +1,24 @@
 package config
 
 import (
+	"fmt"
+	"github.com/alexflint/go-cloudfile"
+	"github.com/alexflint/go-cloudfile/s3file"
+	"github.com/mitchellh/goamz/aws"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
+	"net/url"
 	"path/filepath"
 	"strings"
 )
 
 // the default file name of the configuration file
 const DefaultConfigName = "sparta.yml"
+
+// viper keys for configuration to be passed in
+const ViperS3Key = "s3key"
+const ViperS3Secret = "s3secret"
+const ViperS3Region = "s3region"
 
 // DefaultConfig creates a default configuration where any values that
 //               need to default to "non-empty" values (like booleans)
@@ -33,10 +43,15 @@ func DefaultConfig() SpartaConfig {
 
 // ViperSpartaConfig takes a viper instance, configures it for Sparta configuration using the given paths and search
 //                   location and loads the values into the viper instance as well as returning the configuration
-func ViperSpartaConfig(viperInstance *viper.Viper, fileName string, searchPaths ...string) (*SpartaConfig, error) {
-	// break config name
-	name := filepath.Base(fileName)
-	ext := filepath.Ext(fileName)
+func ViperSpartaConfig(viperInstance *viper.Viper, configUrl string, searchPaths ...string) (*SpartaConfig, error) {
+	parsedUrl, err := url.Parse(configUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	// break config name into parts and determine the
+	name := filepath.Base(parsedUrl.Path)
+	ext := filepath.Ext(parsedUrl.Path)
 	if strings.Index(ext, ".") == 0 {
 		ext = ext[1:]
 	}
@@ -44,23 +59,68 @@ func ViperSpartaConfig(viperInstance *viper.Viper, fileName string, searchPaths 
 		ext = "yml"
 	}
 
-	// set config file
-	viperInstance.SetConfigName(name)
-	viperInstance.SetConfigType(ext)
-
-	// add locations to search for the file with that name
-	for _, location := range searchPaths {
-		viperInstance.AddConfigPath(location)
-	}
-
 	// create new default config instance so that
 	// parts can be defaulted before unmarshalling
 	config := DefaultConfig()
 
-	// unmarshal config using viper
-	err := viperInstance.ReadInConfig()
-	if err != nil {
-		return nil, err
+	// set config file
+	viperInstance.SetConfigName(name)
+	viperInstance.SetConfigType(ext)
+
+	if parsedUrl.Scheme == "file" || len(parsedUrl.Scheme) < 1 {
+		// add locations to search for the file with that name
+		for _, location := range searchPaths {
+			viperInstance.AddConfigPath(location)
+		}
+
+		// unmarshal config using viper
+		err = viperInstance.ReadInConfig()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// perform special handling when s3 is used to get the correct configuration for aws
+		if parsedUrl.Scheme == "s3" {
+			// get authentication from file
+			auth, err := aws.GetAuth(viper.GetString(ViperS3Key), ViperS3Secret)
+
+			// use public / no credential authentication
+			if err != nil {
+				auth = aws.Auth{
+					AccessKey: "",
+					SecretKey: "",
+					Token:     "",
+				}
+			}
+
+			// figure out region
+			regionString := viper.GetString(ViperS3Region)
+			region := aws.USGovWest
+			if strings.TrimSpace(regionString) != "" {
+				if foundValue, found := aws.Regions[regionString]; found {
+					region = foundValue
+				} else {
+					return nil, fmt.Errorf("The region '%s' is not a valid AWS region", regionString)
+				}
+			}
+
+			// create driver using region and authentication
+			cloudfile.Drivers["s3:"] = &s3file.Driver{
+				Region: region,
+				Auth:   auth,
+			}
+		}
+
+		r, err := cloudfile.Open(configUrl)
+		if err != nil {
+			return nil, err
+		}
+		defer r.Close()
+
+		err = viperInstance.ReadConfig(r)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// unmarshal configuration into configuration option
@@ -74,12 +134,12 @@ func ViperSpartaConfig(viperInstance *viper.Viper, fileName string, searchPaths 
 
 // NewSpartaConfig creates a configuration from the given file name and searches
 //                 the list of locations for that file.
-func NewSpartaConfig(fileName string, searchPaths ...string) (*SpartaConfig, error) {
+func NewSpartaConfig(configUrl string, searchPaths ...string) (*SpartaConfig, error) {
 	// create a new viper instance
 	viperInstance := viper.New()
 
 	// return configuration
-	return ViperSpartaConfig(viperInstance, fileName, searchPaths...)
+	return ViperSpartaConfig(viperInstance, configUrl, searchPaths...)
 }
 
 func WriteConfig(config SpartaConfig, fullPath string) error {
