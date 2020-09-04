@@ -10,12 +10,12 @@ import (
 // the default file name of the configuration file
 const DefaultConfigName = "sparta.yml"
 
-// defaultConfig creates a default configuration where any values that
+// DefaultConfig creates a default configuration where any values that
 //               need to default to "non-empty" values (like booleans)
 //               or strings can be set and so that the maps and arrays
 //               are already constructed to prevent issues with unsafe
 //               reads of the configuration
-func defaultConfig() SpartaConfig {
+func DefaultConfig() SpartaConfig {
 	return SpartaConfig{
 		OpenShift: OpenShift{},
 		Cluster: Cluster{},
@@ -55,7 +55,7 @@ func ViperSpartaConfig(viperInstance *viper.Viper, fileName string, searchPaths 
 
 	// create new default config instance so that
 	// parts can be defaulted before unmarshalling
-	config := defaultConfig()
+	config := DefaultConfig()
 
 	// unmarshal config using viper
 	err := viperInstance.ReadInConfig()
