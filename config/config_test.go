@@ -8,6 +8,7 @@ import (
 	"testing"
 )
 
+// load data in the same way for test cases
 func loadTestData(name string, t *testing.T) SpartaConfig {
 	// get current gofile/runtime location
 	_, filename, _, _ := runtime.Caller(0)
@@ -30,6 +31,7 @@ func loadTestData(name string, t *testing.T) SpartaConfig {
 	return *spartaConfig
 }
 
+// single function for checking test values
 func assertSampleData(config SpartaConfig, t *testing.T) {
 	// create assertion
 	a := assert.New(t)
@@ -94,17 +96,46 @@ func assertSampleData(config SpartaConfig, t *testing.T) {
 
 	// check a plugin
 	collectorInfra := plugins["collector-infra"]
-	a.Equal("1.0.0", collectorInfra.Version)
+	a.NotNil(collectorInfra)
+	a.Equal("4.5.6", collectorInfra.Version)
 	a.Equal("github.com", collectorInfra.Service)
 	a.Equal("codesparta", collectorInfra.Organization)
 	a.Equal("master", collectorInfra.Branch)
 }
 
+// read a sample yaml file from the repo and assert it is correct
 func TestReadSampleYaml(t *testing.T) {
 	config := loadTestData("sparta.yml", t)
 	assertSampleData(config, t)
 }
 
+// read a sample yaml file from the given endpoint and assert it is correct
+func TestReadSampleHttpData(t *testing.T) {
+	config, err := NewSpartaConfig("https://codesparta-testdata.s3-us-gov-west-1.amazonaws.com/sparta.yml")
+
+	// create assertion that err is nil and config is not nil
+	a := assert.New(t)
+	a.Nil(err)
+	a.NotNil(config)
+
+	// check values
+	assertSampleData(*config, t)
+}
+
+// read a sample file from an s3 bucket and assert it is correct
+func TestReadSampleS3Data(t *testing.T) {
+	config, err := NewSpartaConfig("s3://codesparta-testdata/sparta.yml")
+
+	// create assertion that err is nil and config is not nil
+	a := assert.New(t)
+	a.Nil(err)
+	a.NotNil(config)
+
+	// check values
+	assertSampleData(*config, t)
+}
+
+// test that a configuration can be loaded, written to disk, and that the round-trip comes out with the same values
 func TestWriteSampleYaml(t *testing.T) {
 	// create assertion
 	a := assert.New(t)
