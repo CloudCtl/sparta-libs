@@ -19,6 +19,11 @@ const DefaultConfigName = "sparta.yml"
 const ViperS3Key = "s3key"
 const ViperS3Secret = "s3secret"
 const ViperS3Region = "s3region"
+const ViperS3Url = "s3url"
+
+// set the default region this way so the test case can add
+// a custom region so that the mock/fake s3 can operate locally
+var defaultRegion = aws.USGovWest
 
 // DefaultConfig creates a default configuration where any values that
 //               need to default to "non-empty" values (like booleans)
@@ -49,6 +54,10 @@ func ViperSpartaConfig(viperInstance *viper.Viper, configUrl string, searchPaths
 		return nil, err
 	}
 
+	// create new default config instance so that
+	// parts can be defaulted before unmarshalling
+	config := DefaultConfig()
+
 	// break config name into parts and determine the
 	name := filepath.Base(parsedUrl.Path)
 	ext := filepath.Ext(parsedUrl.Path)
@@ -59,18 +68,20 @@ func ViperSpartaConfig(viperInstance *viper.Viper, configUrl string, searchPaths
 		ext = "yml"
 	}
 
-	// create new default config instance so that
-	// parts can be defaulted before unmarshalling
-	config := DefaultConfig()
-
 	// set config file
 	viperInstance.SetConfigName(name)
 	viperInstance.SetConfigType(ext)
 
+	// if given a file scheme or assume no scheme means "file"
 	if parsedUrl.Scheme == "file" || len(parsedUrl.Scheme) < 1 {
-		// add locations to search for the file with that name
-		for _, location := range searchPaths {
-			viperInstance.AddConfigPath(location)
+		// set the location based on if the path is absolute or not
+		if filepath.IsAbs(configUrl) {
+			viperInstance.SetConfigFile(configUrl)
+		} else {
+			// add locations to search for the file with that name
+			for _, location := range searchPaths {
+				viperInstance.AddConfigPath(location)
+			}
 		}
 
 		// unmarshal config using viper
@@ -94,14 +105,20 @@ func ViperSpartaConfig(viperInstance *viper.Viper, configUrl string, searchPaths
 			}
 
 			// figure out region
-			regionString := viper.GetString(ViperS3Region)
-			region := aws.USGovWest
-			if strings.TrimSpace(regionString) != "" {
+			regionString := strings.TrimSpace(viper.GetString(ViperS3Region))
+			region := defaultRegion
+			if len(regionString) > 0 {
 				if foundValue, found := aws.Regions[regionString]; found {
 					region = foundValue
 				} else {
 					return nil, fmt.Errorf("The region '%s' is not a valid AWS region", regionString)
 				}
+			}
+
+			// overwrite s3url for region if provided
+			s3UrlString := strings.TrimSpace(viperInstance.GetString(ViperS3Url))
+			if len(s3UrlString) > 0 {
+				region.S3Endpoint = s3UrlString
 			}
 
 			// create driver using region and authentication

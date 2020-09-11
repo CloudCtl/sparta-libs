@@ -1,7 +1,13 @@
 package config
 
 import (
+	"github.com/johannesboyne/gofakes3"
+	"github.com/johannesboyne/gofakes3/backend/s3mem"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -38,25 +44,25 @@ func assertSampleData(config SpartaConfig, t *testing.T) {
 
 	// check OpenShift object
 	ocp := config.OpenShift
-	a.Equal(ocp.Version, "4.5.4")
+	a.Equal("4.5.6", ocp.Version)
 
 	// check cluster object
 	cluster := config.Cluster
 	a.NotNil(cluster)
-	a.Equal(cluster.Target, "govcloud")
-	a.Equal(cluster.VpcName, "iamgroot")
-	a.Equal(cluster.ClusterName, "i")
-	a.Equal(cluster.BaseDomain, "am.groot")
-	a.Equal(cluster.ClusterDomain, "i.am.groot")
-	a.Equal(cluster.AmiId, "ami-e06e5081")
+	a.Equal("govcloud", cluster.Target)
+	a.Equal("iamgroot", cluster.VpcName)
+	a.Equal("i", cluster.ClusterName)
+	a.Equal("am.groot", cluster.BaseDomain)
+	a.Equal("i.am.groot", cluster.ClusterDomain)
+	a.Equal("ami-e06e5081", cluster.AmiId)
 
 	// check cloud object
 	cloud := config.Cloud
 	a.NotNil(cloud)
-	a.Equal(cloud.Provider, "aws")
-	a.Equal(cloud.Region, "us-gov-west-1")
-	a.Equal(cloud.VpcId, "vpc-0aef6256b40f30778")
-	a.Equal(cloud.CidrPrivate, "10.0.0.0/24")
+	a.Equal("aws", cloud.Provider)
+	a.Equal("us-gov-west-1", cloud.Region)
+	a.Equal("vpc-0aef6256b40f30778", cloud.VpcId)
+	a.Equal("10.0.0.0/24", cloud.CidrPrivate)
 
 	// check subnets
 	subnets := config.Subnets
@@ -111,7 +117,27 @@ func TestReadSampleYaml(t *testing.T) {
 
 // read a sample yaml file from the given endpoint and assert it is correct
 func TestReadSampleHttpData(t *testing.T) {
-	config, err := NewSpartaConfig("https://codesparta-testdata.s3-us-gov-west-1.amazonaws.com/sparta.yml")
+	// get current gofile/runtime location
+	_, filename, _, _ := runtime.Caller(0)
+	parent := filepath.Dir(filename)
+	parent, _ = filepath.Abs(parent)
+
+	// join with testdata directory
+	testdata := filepath.Join(parent, "testdata")
+	testFile, err := os.Open(filepath.Join(testdata, "sparta.yml"))
+	if err != nil {
+		t.Errorf("%s", err)
+		t.FailNow()
+	}
+
+	// create test server to just write the test file to whatever is asked of it
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		io.Copy(w, testFile)
+	}))
+	defer srv.Close()
+
+	config, err := NewSpartaConfig(srv.URL + "/sparta.yml")
 
 	// create assertion that err is nil and config is not nil
 	a := assert.New(t)
@@ -124,7 +150,47 @@ func TestReadSampleHttpData(t *testing.T) {
 
 // read a sample file from an s3 bucket and assert it is correct
 func TestReadSampleS3Data(t *testing.T) {
-	config, err := NewSpartaConfig("s3://codesparta-testdata/sparta.yml")
+	// get current gofile/runtime location
+	_, filename, _, _ := runtime.Caller(0)
+	parent := filepath.Dir(filename)
+	parent, _ = filepath.Abs(parent)
+
+	// join with testdata directory
+	testdata := filepath.Join(parent, "testdata")
+	testFile, err := os.Open(filepath.Join(testdata, "sparta.yml"))
+	if err != nil {
+		t.Errorf("%s", err)
+		t.FailNow()
+	}
+
+	stat, err := testFile.Stat()
+	if err != nil {
+		t.Errorf("%s", err)
+		t.FailNow()
+	}
+
+	// fake s3
+	backend := s3mem.New()
+	err = backend.CreateBucket("codesparta-testdata")
+	if err != nil {
+		t.Errorf("%s", err)
+		t.FailNow()
+	}
+
+	_, err = backend.PutObject("codesparta-testdata", "sparta.yml", map[string]string{}, testFile, stat.Size())
+	if err != nil {
+		t.Errorf("%s", err)
+		t.FailNow()
+	}
+
+	faker := gofakes3.New(backend)
+	ts := httptest.NewServer(faker.Server())
+	defer ts.Close()
+
+	// create a viper instance for passing in s3 configuration
+	viperInstance := viper.New()
+	viperInstance.Set(ViperS3Url, ts.URL)
+	config, err := ViperSpartaConfig(viperInstance,"s3://codesparta-testdata/sparta.yml")
 
 	// create assertion that err is nil and config is not nil
 	a := assert.New(t)
