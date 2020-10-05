@@ -1,4 +1,4 @@
-module github.com/CodeSparta/sparta-libs
+module github.com/containercraft/sparta-libs
 
 go 1.14
 
