@@ -75,7 +75,7 @@ func assertSampleData(config SpartaConfig, t *testing.T) {
 	a.Contains(private,"subnet-0d75d5033bfc98414")
 	a.Contains(private,"subnet-058e00cfdb41ca5ce")
 
-	// check provider-auth
+	// check provider-pullsecret
 	providerAuth := config.ProviderAuth
 	a.NotNil(providerAuth)
 	a.True(providerAuth.Keys)
