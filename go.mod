@@ -4,8 +4,9 @@ go 1.14
 
 require (
 	github.com/alexflint/go-cloudfile v0.0.0-20160110233459-c247335ef4f3
-	github.com/aws/aws-sdk-go v1.34.17
+	github.com/aws/aws-sdk-go v1.34.17 // indirect
 	github.com/johannesboyne/gofakes3 v0.0.0-20200716060623-6b2b4cb092cc
+	github.com/mitchellh/go-homedir v1.0.0
 	github.com/mitchellh/goamz v0.0.0-20150317174335-caaaea8b30ee
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/motain/gocheck v0.0.0-20131023154940-9beb271d26e6 // indirect

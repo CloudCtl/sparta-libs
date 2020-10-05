@@ -67,7 +67,7 @@ type SpartaConfig struct {
 	Cluster			Cluster
 	Cloud			Cloud
 	Subnets			Subnets
-	ProviderAuth	ProviderAuth `mapstructure:"provider-auth"`
+	ProviderAuth	ProviderAuth `mapstructure:"provider-pullsecret"`
 	RedSord			RedSord
 	Koffer			Koffer
 }
