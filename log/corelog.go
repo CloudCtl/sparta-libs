@@ -1,7 +1,7 @@
 package log
 
 /*
- * Single entrypoint to use as a logging shim in containercraft projects. This way the logging can be controlled
+ * Single entrypoint to use as a logging shim in cloudctl projects. This way the logging can be controlled
  * and changed project-wide as needed.
  */
 

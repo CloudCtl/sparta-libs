@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/containercraft/sparta-libs/log"
+	"github.com/cloudctl/sparta-libs/log"
 )
 
 // CheckArgs should be used to sanity check cmd line arguments
