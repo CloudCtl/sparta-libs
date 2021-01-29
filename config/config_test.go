@@ -98,6 +98,14 @@ func assertSampleData(config SpartaConfig, t *testing.T) {
 	a.Equal(3, len(plugins))
 	a.Contains(plugins, "collector-infra")
 	a.Contains(plugins, "collector-operators")
+	plugin := koffer.Plugins["collector-operators"]
+	a.NotNil(plugin.Env)
+	a.NotEmpty(plugin.Env)
+	vars := plugin.Env.Map()
+	a.Contains(vars, "COLLECT_ALL")
+	a.Equal(vars["COLLECT_ALL"], "true")
+	a.Contains(vars, "SCOPE")
+	a.Equal(vars["SCOPE"], "test")
 	a.Contains(plugins, "collector-apps")
 
 	// check a plugin
