@@ -37,6 +37,11 @@ koffer:
       service: github.com
       organization: codesparta
       branch: master
+      env:
+        - name: "COLLECT_ALL"
+          value: "true"
+        - name: "SCOPE"
+          value: "test"
     collector-apps:
       version: 4.5.6
       service: github.com

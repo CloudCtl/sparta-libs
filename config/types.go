@@ -1,5 +1,7 @@
 package config
 
+import "fmt"
+
 // OpenShift defines the openshift configuration details related to artifacts and sources
 type OpenShift struct {
 	Version		string
@@ -43,6 +45,47 @@ type RedSord struct {
 	Enabled        	bool
 }
 
+// An EnvironmentVariable is a struct that holds a name/value pair because a straight-up map[string]string
+//                        can't be used since viper keys are case insensitive and will be all lower case in the
+//                        map resulting to unexpected behavior in the plugin
+//                        see: https://github.com/spf13/viper/issues/411
+//                        and: https://github.com/spf13/viper/issues/373
+type EnvironmentVariable struct {
+	Name	string
+	Value	string
+}
+
+// Pair converts the name/value into the name=value format that is expected
+//      when the command is being run
+func (env EnvironmentVariable) Pair() string {
+	return fmt.Sprintf("%s=%s", env.Name, env.Value)
+}
+
+// EnvironmentVariables is a slice of name->values that is used to send environment
+//                      to the execution of a plugin. This is used in place of a map
+//                      because viper keys are case-insensitive and the resulting map
+//                      would all be lowercase
+type EnvironmentVariables []EnvironmentVariable
+
+// List creates a slice of "name=value" pairs that is suitable for use with the
+//      plugin command.
+func (vars EnvironmentVariables) List() []string {
+	output := make([]string, 0, len(vars))
+	for idx := 0; idx < len(vars); idx++ {
+		output = append(output, vars[idx].Pair())
+	}
+	return output
+}
+
+// Map creates a map of values matching the map[name]value structure
+func (vars EnvironmentVariables) Map() map[string]string {
+	output := make(map[string]string)
+	for idx := 0; idx < len(vars); idx++ {
+		output[vars[idx].Name] = vars[idx].Value
+	}
+	return output
+}
+
 // Plugin is a struct that defines details about a Koffer plugin, it's
 //        source, version, and other details for Koffer to collect
 type Plugin struct {
@@ -50,6 +93,7 @@ type Plugin struct {
 	Service			string
 	Organization 	string
 	Branch			string
+	Env				EnvironmentVariables
 }
 
 // Plugins is a map that names plugins to their source
@@ -67,7 +111,7 @@ type SpartaConfig struct {
 	Cluster			Cluster
 	Cloud			Cloud
 	Subnets			Subnets
-	ProviderAuth	ProviderAuth `mapstructure:"provider-pullsecret"`
+	ProviderAuth	ProviderAuth `mapstructure:"provider-auth"`
 	RedSord			RedSord
 	Koffer			Koffer
 }
